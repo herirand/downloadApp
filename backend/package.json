@@ -1,0 +1,23 @@
+{
+	"name": "backend",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"build": "tsc",
+		"dev": "ts-node src/app.ts",
+		"start": " node dist/app.js",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@fastify/swagger": "^9.7.0",
+		"@fastify/swagger-ui": "^5.2.5",
+		"fastify": "^5.8.2"
+	},
+	"devDependencies": {
+		"@types/node": "^25.5.0",
+		"ts-node": "^10.9.2"
+	}
+}
