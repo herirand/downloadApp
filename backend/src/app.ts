@@ -30,7 +30,7 @@ app.register(fastifyStatic, {
 	root: '/',
 })
 
-app.register(downloadRoute, { prefix: 'api/v1' })
+app.register(downloadRoute, { prefix: '/api/v1' })
 
 const port = 3000;
 

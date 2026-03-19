@@ -3,61 +3,70 @@ import { YtDlp } from "ytdlp-nodejs";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { createReadStream } from "fs";
 
 async function downloadService(request: FastifyRequest, reply: FastifyReply) {
-	// console.log(`request body == ${request.body}`)
-	const yltdp = new YtDlp();
+	const ytdlp = new YtDlp();
 	try {
 		const { url } = request.body as { url: string };
 		console.log("url == ", url);
 
-		//dossier temp
-		const tempDir = path.join(os.tmpdir(), `yltdp-${Date.now()}`);
+		// Dossier temporaire
+		const tempDir = path.join(os.tmpdir(), `ytdlp-${Date.now()}`);
 
-		//creat dir temp
+		// Créer dossier temporaire
 		if (!fs.existsSync(tempDir)) {
 			fs.mkdirSync(tempDir, { recursive: true });
-			console.log("******* dossier Tempooraire : ", tempDir);
+			console.log("******* dossier Temporaire : ", tempDir);
 		}
 
-		//down in a temp directory
-		const result = await yltdp.downloadAsync(url, {
+		// Télécharger dans le dossier temporaire
+		const result = await ytdlp.downloadAsync(url, {
 			output: path.join(tempDir, '%(title)s.%(ext)s')
 		});
-		console.log("*******  telechargement reussi  : ", result);
+		console.log("******* téléchargement réussi : ", result);
 
-		//find a file 
+		// Trouver le fichier
 		const files = fs.readdirSync(tempDir);
-		if (files.length == 0) {
+		if (files.length === 0) {
 			throw new Error('File not found');
 		}
-		console.log("******* fichier telecharger : ", files);
+		console.log("******* fichier téléchargé : ", files);
 
 		const fileName = files[0];
 		const filePath = path.join(tempDir, fileName);
 
-		await reply.sendFile(filePath, fileName);
+		// STREAMING - Envoyer le fichier au client
+		const stream = createReadStream(filePath);
 
-		//delete file tmp
-		reply.raw.on('finish', () => {
+		// Configurer les headers
+		reply.type('application/octet-stream');
+		reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+
+		// Envoyer le stream
+		reply.send(stream);
+
+		// Supprimer le fichier temporaire APRES envoi
+		stream.on('end', () => {
 			try {
 				fs.rmSync(tempDir, { recursive: true, force: true });
+				console.log("++++++++++++++++++++++++++++++fichier supprimé avec succès");
 			} catch (err) {
-				console.log(err);
+				console.log("Erreur suppression:", err);
 			}
-		})
-
-		reply.code(200).send({
-			succes: true,
-			message: 'Fichier telecharger ' + result,
 		});
+
+		stream.on('error', (err) => {
+			console.error('Erreur stream:', err);
+		});
+
 	} catch (err) {
 		reply.code(400).send({
 			statusCode: 400,
-			message: 'Erreur lors de la telechargement',
+			message: 'Erreur lors du téléchargement',
 			error: String(err),
 		});
 	}
-};
+}
 
 export default downloadService;
