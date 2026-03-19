@@ -2,10 +2,12 @@ import Fastify from 'fastify'
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import downloadRoute from './routes/downloadRoute';
+import fastifyStatic from '@fastify/static';
 
 const app = Fastify({
 	logger: true
 });
+
 
 // === Config swagger ===
 app.register(fastifySwagger, {
@@ -24,6 +26,9 @@ app.register(fastifySwaggerUi, {
 	routePrefix: '/api-docs',
 })
 
+app.register(fastifyStatic, {
+	root: '/',
+})
 
 app.register(downloadRoute, { prefix: 'api/v1' })
 
