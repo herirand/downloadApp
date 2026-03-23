@@ -6,83 +6,75 @@ import * as os from "os";
 import { createReadStream } from "fs";
 
 async function downloadService(request: FastifyRequest, reply: FastifyReply) {
-	const ytdlp = new YtDlp();
+  const ytdlp = new YtDlp();
+  const tempDir = path.join(os.tmpdir(), `ytdlp-${Date.now()}`);
 
-	try {
-		const { url } = request.body as { url: string };
-		console.log("📥 URL reçue:", url);
+  try {
+    const { url } = request.body as { url: string };
+    console.log("📥 URL reçue:", url);
 
-		// ✅ Créer dossier temporaire
-		const tempDir = path.join(os.tmpdir(), `ytdlp-${Date.now()}`);
+    fs.mkdirSync(tempDir, { recursive: true });
+    console.log("📁 Dossier temporaire:", tempDir);
 
-		if (!fs.existsSync(tempDir)) {
-			fs.mkdirSync(tempDir, { recursive: true });
-		}
-		console.log("📁 Dossier temporaire:", tempDir);
+    console.log("⏳ Téléchargement en cours...");
+    await ytdlp.downloadAsync(url, {
+      output: path.join(tempDir, "%(title)s.%(ext)s"),
+    });
 
-		// ✅ Télécharger
-		console.log("⏳ Téléchargement en cours...");
-		const result = await ytdlp.downloadAsync(url, {
-			output: path.join(tempDir, '%(title)s.%(ext)s')
-		});
-		console.log("✅ Téléchargement réussi:", result);
+    const files = fs.readdirSync(tempDir);
+    if (files.length === 0) throw new Error("Aucun fichier téléchargé");
 
-		// Trouver le fichier
-		const files = fs.readdirSync(tempDir);
-		if (files.length === 0) {
-			throw new Error('Aucun fichier téléchargé');
-		}
+    const fileName = files[0];
+    const filePath = path.join(tempDir, fileName);
+    const stats = fs.statSync(filePath);
 
-		const fileName = files[0];
-		const filePath = path.join(tempDir, fileName);
+    console.log(`📦 Fichier: ${fileName} (${stats.size} bytes)`);
 
-		// Vérifier que le fichier existe et a du contenu
-		const stats = fs.statSync(filePath);
-		console.log(`📦 Fichier: ${fileName} (${stats.size} bytes)`);
+    if (stats.size === 0) throw new Error("Le fichier téléchargé est vide");
 
-		// ✅ Configurer les headers AVANT d'envoyer
-		reply.type('application/octet-stream');
-		reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
-		reply.header('Content-Length', stats.size.toString());
+    // ✅ Encoder le nom pour éviter les problèmes avec les caractères spéciaux
+    const encodedFileName = encodeURIComponent(fileName);
 
-		// ✅ Créer le stream
-		const stream = createReadStream(filePath);
+    reply.raw.setHeader("Content-Type", "application/octet-stream");
+    reply.raw.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
+    );
+    reply.raw.setHeader("Content-Length", stats.size.toString());
+    // ✅ CRITIQUE : exposer le header au frontend
+    reply.raw.setHeader(
+      "Access-Control-Expose-Headers",
+      "Content-Disposition, Content-Length"
+    );
 
-		// ✅ ATTENDRE que l'envoi soit COMPLÈTEMENT terminé
-		stream.on('end', () => {
-			console.log("✅ Fichier envoyé au client");
-			// Le fichier est complètement envoyé, on peut le supprimer
-			setTimeout(() => {
-				try {
-					fs.rmSync(tempDir, { recursive: true, force: true });
-					console.log('🗑️ Fichier temporaire supprimé');
-				} catch (err) {
-					console.error('❌ Erreur suppression:', err);
-				}
-			}, 500); // Petit délai pour être sûr
-		});
+    const stream = createReadStream(filePath);
 
-		// En cas d'erreur de streaming
-		stream.on('error', (err) => {
-			console.error('❌ Erreur stream:', err);
-			try {
-				fs.rmSync(tempDir, { recursive: true, force: true });
-			} catch (e) {
-				console.error('Erreur cleanup:', e);
-			}
-		});
+    // ✅ Cleanup APRÈS que le stream soit fini
+    reply.raw.on("finish", () => {
+      setTimeout(() => {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        console.log("🗑️ Nettoyé");
+      }, 500);
+    });
 
-		console.log("📤 Streaming au client...");
-		reply.send(stream);
+    stream.on("error", (err) => {
+      console.error("❌ Erreur stream:", err);
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    });
 
-	} catch (err) {
-		console.error('❌ Erreur:', err);
-		reply.code(400).send({
-			statusCode: 400,
-			message: 'Erreur lors du téléchargement',
-			error: String(err),
-		});
-	}
+    console.log("📤 Streaming au client...");
+    // ✅ Utiliser reply.raw pour un contrôle total du stream
+    stream.pipe(reply.raw);
+
+  } catch (err) {
+    console.error("❌ Erreur:", err);
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    reply.code(400).send({
+      statusCode: 400,
+      message: "Erreur lors du téléchargement",
+      error: String(err),
+    });
+  }
 }
 
 export default downloadService;
