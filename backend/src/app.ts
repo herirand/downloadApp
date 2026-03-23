@@ -3,11 +3,17 @@ import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import downloadRoute from './routes/downloadRoute';
 import fastifyStatic from '@fastify/static';
+import fastifyCors from '@fastify/cors';
 
 const app = Fastify({
 	logger: true
 });
 
+
+app.register(fastifyCors, {
+	origin: 'http://localhost:4000',
+	credentials: true
+})
 
 // === Config swagger ===
 app.register(fastifySwagger, {
