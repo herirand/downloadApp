@@ -11,54 +11,18 @@ async function downloadService(request: FastifyRequest, reply: FastifyReply) {
 		const { url } = request.body as { url: string };
 		console.log("url == ", url);
 
-		// Dossier temporaire
-		const tempDir = path.join(os.tmpdir(), `ytdlp-${Date.now()}`);
-
-		// Créer dossier temporaire
-		if (!fs.existsSync(tempDir)) {
-			fs.mkdirSync(tempDir, { recursive: true });
-			console.log("******* dossier Temporaire : ", tempDir);
-		}
-
-		// Télécharger dans le dossier temporaire
 		const result = await ytdlp.downloadAsync(url, {
-			output: path.join(tempDir, '%(title)s.%(ext)s')
+			output: '-',
+			quiet: true,
+			noWarnings: true
 		});
-		console.log("******* téléchargement réussi : ", result);
-
-		// Trouver le fichier
-		const files = fs.readdirSync(tempDir);
-		if (files.length === 0) {
-			throw new Error('File not found');
-		}
-		console.log("******* fichier téléchargé : ", files);
-
-		const fileName = files[0];
-		const filePath = path.join(tempDir, fileName);
-
-		// STREAMING - Envoyer le fichier au client
-		const stream = createReadStream(filePath);
+		console.log("telechargement via pipe");
 
 		// Configurer les headers
 		reply.type('application/octet-stream');
-		reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+		reply.header('Content-Disposition', `attachment; filename="${result}.mp4"`);
 
-		// Envoyer le stream
-		reply.send(stream);
-
-		// Supprimer le fichier temporaire APRES envoi
-		stream.on('end', () => {
-			try {
-				fs.rmSync(tempDir, { recursive: true, force: true });
-				console.log("++++++++++++++++++++++++++++++fichier supprimé avec succès");
-			} catch (err) {
-				console.log("Erreur suppression:", err);
-			}
-		});
-
-		stream.on('error', (err) => {
-			console.error('Erreur stream:', err);
-		});
+		reply.send(result);
 
 	} catch (err) {
 		reply.code(400).send({
