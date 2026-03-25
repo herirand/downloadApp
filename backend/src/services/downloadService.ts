@@ -11,11 +11,11 @@ async function downloadService(request: FastifyRequest, reply: FastifyReply) {
 
 	try {
 		const { url } = request.body as { url: string };
-		console.log("📥 URL reçue:", url);
+		console.log("URL reçue:", url);
 
 		fs.mkdirSync(tempDir, { recursive: true });
 
-		console.log("⏳ Téléchargement en cours...");
+		console.log("Téléchargement en cours...");
 		await ytdlp.downloadAsync(url, {
 			output: path.join(tempDir, "%(title)s.%(ext)s"),
 		});
@@ -30,11 +30,10 @@ async function downloadService(request: FastifyRequest, reply: FastifyReply) {
 		const fileName = files[0];
 		const filePath = path.join(tempDir, fileName);
 		const stats = fs.statSync(filePath);
-		console.log(`filename: ${fileName} | filePath: ${filePath}`);
 
 		if (stats.size === 0) throw new Error("Fichier vide (0 bytes)");
 
-		console.log(`📦 Fichier: ${fileName} (${stats.size} bytes)`);
+		console.log(`Fichier: ${fileName} (${stats.size} bytes)`);
 
 		// Encoder le nom proprement pour les caractères spéciaux
 		const encodedName = encodeURIComponent(fileName);
@@ -63,9 +62,9 @@ async function downloadService(request: FastifyRequest, reply: FastifyReply) {
 		// pipeline gère proprement la fin ET les erreurs
 		await pipeline(stream, reply.raw);
 
-		console.log("✅ Fichier envoyé complètement");
+		console.log("Fichier envoye");
 	} catch (err) {
-		console.error("❌ Erreur:", err);
+		console.error("Erreur:", err);
 		if (!reply.raw.headersSent) {
 			reply.code(500).send({
 				statusCode: 500,
@@ -78,7 +77,7 @@ async function downloadService(request: FastifyRequest, reply: FastifyReply) {
 		setTimeout(() => {
 			try {
 				fs.rmSync(tempDir, { recursive: true, force: true });
-				console.log("🗑️ Dossier temporaire supprimé");
+				console.log("Dossier temporaire supprimé");
 			} catch (e) {
 				console.error("Erreur cleanup:", e);
 			}
@@ -86,4 +85,4 @@ async function downloadService(request: FastifyRequest, reply: FastifyReply) {
 	}
 }
 
-export default new DownloadService();
+export default downloadService;

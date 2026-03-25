@@ -50,7 +50,6 @@ export const downloadFile = async (
 				const percent = Math.round((received / total) * 100);
 				onProgress?.(percent);
 			}
-			// console.log(`📥 Reçu: ${(received / 1024 / 1024).toFixed(1)} MB`);
 		}
 
 		// Assembler et déclencher le téléchargement
