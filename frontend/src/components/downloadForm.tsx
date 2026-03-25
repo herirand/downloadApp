@@ -7,25 +7,28 @@ export const DownloadForm = () => {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [success, setSuccess] = useState('');
+	const [progress, SetProgress] = useState<number | null>(null);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
 		setSuccess('');
 		setLoading(true);
+		SetProgress(0);
 
 		try {
 			if (!url.trim()) {
 				throw new Error("Veuillez entrer une URL");
 			}
 
-			const result = await downloadFile(url);
+			const result = await downloadFile(url, (percent) => SetProgress(percent));
 			setSuccess(`${result.fileName} telecharger acec succes!`);
 			setUrl('');
 		} catch (err) {
 			setError(`${err instanceof Error ? err.message : 'Erreur'}`);
 		} finally {
 			setLoading(false);
+			setTimeout(() => SetProgress(null), 1000); //apres 1s
 		}
 	};
 
@@ -42,18 +45,31 @@ export const DownloadForm = () => {
 							type="text"
 							value={url}
 							onChange={(e) => setUrl(e.target.value)}
-							placeholder="https://exemple.com/vodeo.mp4"
+							placeholder="https://exemple.com/video.mp4"
 							disabled={loading}
 						/>
 					</div>
 
 					<button
+						onClick={handleSubmit}
+						disabled={progress !== null}
 						type="submit"
-						disabled={loading}
+						// disabled={loading}
 						className={loading ? 'loading' : ''}
 					>
-						{loading ? 'Telechargement...' : 'Telecharger'}
+						telecharger
 					</button>
+					{progress !== null && (
+						<div style={{ marginTop: 8, background: '#eee', borderRadius: 4, height: 8 }}>
+							<div style={{
+								width: `${progress}%`,
+								background: '#3b82f6',
+								height: '100%',
+								borderRadius: 4,
+								transition: 'width 0.2s ease',
+							}} />
+						</div>
+					)}
 				</form>
 
 				{error && <div className="error-message">{error}</div>}
