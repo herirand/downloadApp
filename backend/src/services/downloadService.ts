@@ -86,4 +86,4 @@ async function downloadService(request: FastifyRequest, reply: FastifyReply) {
 	}
 }
 
-export default downloadService;
+export default new DownloadService();
