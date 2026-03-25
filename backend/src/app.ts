@@ -12,7 +12,12 @@ const app = Fastify({
 
 app.register(fastifyCors, {
 	origin: 'http://localhost:4000',
-	credentials: true
+	credentials: true,
+	exposedHeaders: ['Content-Disposition'],
+	methods: ['GET', 'POST', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization'],
+	preflightContinue: false,
+	optionsSuccessStatus: 204,
 })
 
 // === Config swagger ===
